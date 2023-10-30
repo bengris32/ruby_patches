@@ -1,0 +1,73 @@
+From 28d7f6b645ac1c97fc5d98bc9a53bcbf6f7ab1ff Mon Sep 17 00:00:00 2001
+From: Shrikara B <quic_shrikara@quicinc.com>
+Date: Thu, 18 Nov 2021 21:59:21 +0530
+Subject: [PATCH 7/9] CCodec: Use pipelineRoom only for HW decoder
+
+Use pipelineRoom parameter to control the inputs notified to client
+only in case of HW decoder.
+
+CRs-Fixed: 3066971
+Change-Id: Idb0aade345eaef746fc08894571f4db1cd0f796e
+---
+ media/codec2/sfplugin/CCodecBufferChannel.cpp | 11 +++++++++--
+ media/codec2/sfplugin/CCodecBufferChannel.h   |  1 +
+ 2 files changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/media/codec2/sfplugin/CCodecBufferChannel.cpp b/media/codec2/sfplugin/CCodecBufferChannel.cpp
+index b9fa742..882e8a2 100644
+--- a/media/codec2/sfplugin/CCodecBufferChannel.cpp
++++ b/media/codec2/sfplugin/CCodecBufferChannel.cpp
+@@ -155,6 +155,7 @@ CCodecBufferChannel::CCodecBufferChannel(
+       mMetaMode(MODE_NONE),
+       mInputMetEos(false),
+       mLastInputBufferAvailableTs(0u),
++      mIsHWDecoder(false),
+       mSendEncryptedInfoBuffer(false) {
+     mOutputSurface.lock()->maxDequeueBuffers = kSmoothnessFactor + kRenderingDepth;
+     {
+@@ -189,6 +190,8 @@ void CCodecBufferChannel::setComponent(
+     mComponent = component;
+     mComponentName = component->getName() + StringPrintf("#%d", int(uintptr_t(component.get()) % 997));
+     mName = mComponentName.c_str();
++    std::regex pattern{"c2\\.qti\\..*\\.decoder.*"};
++    mIsHWDecoder = std::regex_match(mComponentName, pattern);
+ }
+ 
+ status_t CCodecBufferChannel::setInputSurface(
+@@ -730,8 +733,7 @@ void CCodecBufferChannel::feedInputBufferIfAvailable() {
+     // limit this WA to qc hw decoder only
+     // if feedInputBufferIfAvailableInternal() successfully (has available input buffer),
+     // mLastInputBufferAvailableTs would be updated. otherwise, not input buffer available
+-    std::regex pattern{"c2\\.qti\\..*\\.decoder.*"};
+-    if (std::regex_match(mComponentName, pattern)) {
++    if (mIsHWDecoder) {
+         std::lock_guard<std::mutex> tsLock(mTsLock);
+         uint64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
+                 PipelineWatcher::Clock::now().time_since_epoch()).count();
+@@ -767,6 +769,11 @@ void CCodecBufferChannel::feedInputBufferIfAvailableInternal() {
+             if (numActiveSlots >= input->numSlots) {
+                 break;
+             }
++
++            // Control the inputs based on pipelineRoom only for HW decoder
++            if (!mIsHWDecoder) {
++                pipelineRoom = SIZE_MAX;
++            }
+             if (pipelineRoom <= input->buffers->numClientBuffers()) {
+                 ALOGI("pipelineRoom(%zu) is <= numClientBuffers(%zu). "
+                     "Not signalling any more buffers to client",
+diff --git a/media/codec2/sfplugin/CCodecBufferChannel.h b/media/codec2/sfplugin/CCodecBufferChannel.h
+index a0317f4..79bdd1f 100644
+--- a/media/codec2/sfplugin/CCodecBufferChannel.h
++++ b/media/codec2/sfplugin/CCodecBufferChannel.h
+@@ -343,6 +343,7 @@ private:
+ 
+     uint64_t mLastInputBufferAvailableTs;
+     std::mutex mTsLock;
++    bool mIsHWDecoder;
+ 
+     sp<ICrypto> mCrypto;
+     sp<IDescrambler> mDescrambler;
+-- 
+2.34.1
+

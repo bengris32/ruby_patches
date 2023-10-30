@@ -1,0 +1,44 @@
+From dd1069be154d68ee38afdafc32f9c753fe6eafe2 Mon Sep 17 00:00:00 2001
+From: Paul Keith <javelinanddart@gmail.com>
+Date: Fri, 6 May 2022 10:41:52 +0530
+Subject: [PATCH 2/9] libstagefright: omx: Add support for loading prebuilt ddp
+ and ac4 decoder lib
+
+[HELLBOY017]: Also allow to load dolby codec in MediaCodecList
+
+Change-Id: I3b85c15889c9e3aef152e726a83936234103254e
+---
+ media/libstagefright/MediaCodecList.cpp    | 1 +
+ media/libstagefright/omx/SoftOMXPlugin.cpp | 4 ++++
+ 2 files changed, 5 insertions(+)
+
+diff --git a/media/libstagefright/MediaCodecList.cpp b/media/libstagefright/MediaCodecList.cpp
+index a3040f4..afd5c60 100644
+--- a/media/libstagefright/MediaCodecList.cpp
++++ b/media/libstagefright/MediaCodecList.cpp
+@@ -318,6 +318,7 @@ const sp<AMessage> MediaCodecList::getGlobalSettings() const {
+ //static
+ bool MediaCodecList::isSoftwareCodec(const AString &componentName) {
+     return componentName.startsWithIgnoreCase("OMX.google.")
++            || componentName.startsWithIgnoreCase("OMX.dolby.")
+             || componentName.startsWithIgnoreCase("c2.android.")
+             || (!componentName.startsWithIgnoreCase("OMX.")
+                     && !componentName.startsWithIgnoreCase("c2."));
+diff --git a/media/libstagefright/omx/SoftOMXPlugin.cpp b/media/libstagefright/omx/SoftOMXPlugin.cpp
+index 8c186c9..25b36cb 100644
+--- a/media/libstagefright/omx/SoftOMXPlugin.cpp
++++ b/media/libstagefright/omx/SoftOMXPlugin.cpp
+@@ -61,6 +61,10 @@ static const struct {
+     { "OMX.google.flac.decoder", "flacdec", "audio_decoder.flac" },
+     { "OMX.google.flac.encoder", "flacenc", "audio_encoder.flac" },
+     { "OMX.google.gsm.decoder", "gsmdec", "audio_decoder.gsm" },
++    { "OMX.dolby.ac3.decoder", "ddpdec", "audio_decoder.ac3" },
++    { "OMX.dolby.eac3-joc.decoder", "ddpdec", "audio_decoder.eac3_joc" },
++    { "OMX.dolby.eac3.decoder", "ddpdec", "audio_decoder.eac3" },
++    { "OMX.dolby.ac4.decoder", "ac4dec", "audio_decoder.ac4" },
+ };
+ 
+ static const size_t kNumComponents =
+-- 
+2.34.1
+

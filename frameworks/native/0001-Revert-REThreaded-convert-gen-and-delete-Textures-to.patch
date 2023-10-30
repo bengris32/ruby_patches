@@ -1,0 +1,45 @@
+From eaff6ef881ec2643e502230f87f5970cec136edf Mon Sep 17 00:00:00 2001
+From: DarkJoker360 <simoespo159@gmail.com>
+Date: Fri, 31 Mar 2023 08:58:14 +0200
+Subject: [PATCH] Revert "REThreaded: convert gen- and delete-Textures to
+ no-ops"
+
+This reverts commit 48b5f3cbeae031324406ccbcb037651c66611adb.
+
+Reason for revert: This is causing laggy bootanimation for some devices
+
+Test: boot, see no more bootanimation lags
+Change-Id: I05fc60a6ffa874e393f19a1fedb51bb054b2da0c
+---
+ libs/renderengine/threaded/RenderEngineThreaded.cpp | 8 --------
+ 1 file changed, 8 deletions(-)
+
+diff --git a/libs/renderengine/threaded/RenderEngineThreaded.cpp b/libs/renderengine/threaded/RenderEngineThreaded.cpp
+index 203bb54701..889542b2d2 100644
+--- a/libs/renderengine/threaded/RenderEngineThreaded.cpp
++++ b/libs/renderengine/threaded/RenderEngineThreaded.cpp
+@@ -178,10 +178,6 @@ void RenderEngineThreaded::dump(std::string& result) {
+ 
+ void RenderEngineThreaded::genTextures(size_t count, uint32_t* names) {
+     ATRACE_CALL();
+-    // This is a no-op in SkiaRenderEngine.
+-    if (getRenderEngineType() != RenderEngineType::THREADED) {
+-        return;
+-    }
+     std::promise<void> resultPromise;
+     std::future<void> resultFuture = resultPromise.get_future();
+     {
+@@ -198,10 +194,6 @@ void RenderEngineThreaded::genTextures(size_t count, uint32_t* names) {
+ 
+ void RenderEngineThreaded::deleteTextures(size_t count, uint32_t const* names) {
+     ATRACE_CALL();
+-    // This is a no-op in SkiaRenderEngine.
+-    if (getRenderEngineType() != RenderEngineType::THREADED) {
+-        return;
+-    }
+     std::promise<void> resultPromise;
+     std::future<void> resultFuture = resultPromise.get_future();
+     {
+-- 
+2.34.1
+

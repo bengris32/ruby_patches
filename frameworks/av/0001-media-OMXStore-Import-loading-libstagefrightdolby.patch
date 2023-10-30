@@ -1,0 +1,49 @@
+From ab707f0558a990cd831985774677f941b244bedc Mon Sep 17 00:00:00 2001
+From: johnmart19 <johnivan19999@gmail.com>
+Date: Sat, 24 Dec 2022 16:34:00 +0200
+Subject: [PATCH 1/9] media: OMXStore: Import loading libstagefrightdolby
+
+- Imported from Xiaomi Android 13 Changes
+
+Change-Id: Ia7da9da19bfa10c64a82eb68eef3857a78e12469
+---
+ media/libstagefright/omx/OMXStore.cpp | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+
+diff --git a/media/libstagefright/omx/OMXStore.cpp b/media/libstagefright/omx/OMXStore.cpp
+index 4827d9e..c5d5a76 100644
+--- a/media/libstagefright/omx/OMXStore.cpp
++++ b/media/libstagefright/omx/OMXStore.cpp
+@@ -18,6 +18,7 @@
+ #define LOG_TAG "OMXStore"
+ #include <android-base/properties.h>
+ #include <utils/Log.h>
++#include <cutils/properties.h>
+ 
+ #include <media/stagefright/omx/OMXStore.h>
+ #include <media/stagefright/omx/SoftOMXPlugin.h>
+@@ -63,6 +64,21 @@ OMXStore::~OMXStore() {
+ 
+ void OMXStore::addVendorPlugin() {
+     addPlugin("libstagefrighthw.so");
++
++    // MIUI ADD: DOLBY_ENABLE
++    // NOTE: We do not use FeatureManager::isFeatureEnable here because we can not add shared lib
++    // libmediautils to this module due to this module is vendor_avaiable and vndk is set as true
++    // but libmediautils is not.
++    bool isDolbyEnable = property_get_bool("ro.vendor.audio.dolby.dax.support", false);
++    if (isDolbyEnable) {
++        // !IMPORTANT:
++        // Dolby OMX plugin manages all the Dolby codec components. Customer needs to manage Dolby
++        // codec components in its own OMX plugin (e.g. above libstagefrighthw.so) then removes
++        // all Dolby's modifications in this file to pass Goolge VTS.
++        ALOGD("%s(): Loading Dolby OMX plugin...", __FUNCTION__);
++        addPlugin("libstagefrightdolby.so");
++    }
++    // MIUI END
+ }
+ 
+ void OMXStore::addPlatformPlugin() {
+-- 
+2.34.1
+

@@ -1,0 +1,28 @@
+From 1fa74b27d26b7e219d5da8a31ab14e932417915f Mon Sep 17 00:00:00 2001
+From: bengris32 <bengris32@protonmail.ch>
+Date: Sat, 28 Oct 2023 23:42:12 +0100
+Subject: [PATCH 9/9] Codec2: Extend the queue empty work hack to MTK decoders
+ too
+
+Change-Id: I1a1ff62e4f2b68922974ea6492a501ca65a13c5a
+Signed-off-by: bengris32 <bengris32@protonmail.ch>
+---
+ media/codec2/sfplugin/CCodecBufferChannel.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/media/codec2/sfplugin/CCodecBufferChannel.cpp b/media/codec2/sfplugin/CCodecBufferChannel.cpp
+index 8096454..af1d1b0 100644
+--- a/media/codec2/sfplugin/CCodecBufferChannel.cpp
++++ b/media/codec2/sfplugin/CCodecBufferChannel.cpp
+@@ -190,7 +190,7 @@ void CCodecBufferChannel::setComponent(
+     mComponent = component;
+     mComponentName = component->getName() + StringPrintf("#%d", int(uintptr_t(component.get()) % 997));
+     mName = mComponentName.c_str();
+-    std::regex pattern{"c2\\.qti\\..*\\.decoder.*"};
++    std::regex pattern{"c2\\.(mtk|qti)\\..*\\.decoder.*"};
+     mIsHWDecoder = std::regex_match(mComponentName, pattern);
+ }
+ 
+-- 
+2.34.1
+

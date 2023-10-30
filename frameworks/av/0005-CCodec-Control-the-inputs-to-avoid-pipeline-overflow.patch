@@ -1,0 +1,93 @@
+From 7ee5eabd075896207ea6acd3d18d944d878c18ff Mon Sep 17 00:00:00 2001
+From: Shrikara B <shrikara@codeaurora.org>
+Date: Thu, 8 Apr 2021 19:06:54 +0530
+Subject: [PATCH 5/9] CCodec: Control the inputs to avoid pipeline overflow
+
+When the pipeline is almost full, do not indicate to app
+about free input buffers if the pipeline is expected to
+overflow in case the app queues more input buffers.
+
+This is avoid watchdog timeout if app pauses the pipeline
+immediately after pipeline overflows
+
+CRs-Fixed: 2918974
+Change-Id: I14e44e304b34ea5fae85a0ce4f3aae0d9d154f84
+---
+ media/codec2/sfplugin/CCodecBufferChannel.cpp | 9 ++++++++-
+ media/codec2/sfplugin/PipelineWatcher.cpp     | 6 +++++-
+ media/codec2/sfplugin/PipelineWatcher.h       | 4 +++-
+ 3 files changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/media/codec2/sfplugin/CCodecBufferChannel.cpp b/media/codec2/sfplugin/CCodecBufferChannel.cpp
+index c0a3cc4..a0fae4a 100644
+--- a/media/codec2/sfplugin/CCodecBufferChannel.cpp
++++ b/media/codec2/sfplugin/CCodecBufferChannel.cpp
+@@ -725,7 +725,9 @@ void CCodecBufferChannel::feedInputBufferIfAvailableInternal() {
+         }
+     }
+     size_t numActiveSlots = 0;
+-    while (!mPipelineWatcher.lock()->pipelineFull()) {
++    size_t pipelineRoom = 0;
++    size_t numInputBuffersAvailable = 0;
++    while (!mPipelineWatcher.lock()->pipelineFull(&pipelineRoom)) {
+         sp<MediaCodecBuffer> inBuffer;
+         size_t index;
+         {
+@@ -747,6 +749,11 @@ void CCodecBufferChannel::feedInputBufferIfAvailableInternal() {
+         }
+         ALOGV("[%s] new input index = %zu [%p]", mName, index, inBuffer.get());
+         mCallback->onInputBufferAvailable(index, inBuffer);
++        if (++numInputBuffersAvailable >= pipelineRoom) {
++            ALOGV("[%s] pipeline will overflow after %zu queueInputBuffer", mName,
++                    numInputBuffersAvailable);
++            break;
++        }
+     }
+     ALOGV("[%s] # active slots after feedInputBufferIfAvailable = %zu", mName, numActiveSlots);
+ }
+diff --git a/media/codec2/sfplugin/PipelineWatcher.cpp b/media/codec2/sfplugin/PipelineWatcher.cpp
+index bc9197c..cf9fee4 100644
+--- a/media/codec2/sfplugin/PipelineWatcher.cpp
++++ b/media/codec2/sfplugin/PipelineWatcher.cpp
+@@ -99,7 +99,7 @@ void PipelineWatcher::flush() {
+     mFramesInPipeline.clear();
+ }
+ 
+-bool PipelineWatcher::pipelineFull() const {
++bool PipelineWatcher::pipelineFull(size_t *pipelineRoom) const {
+     if (mFramesInPipeline.size() >=
+             mInputDelay + mPipelineDelay + mOutputDelay + mSmoothnessFactor) {
+         ALOGV("pipelineFull: too many frames in pipeline (%zu)", mFramesInPipeline.size());
+@@ -131,6 +131,10 @@ bool PipelineWatcher::pipelineFull() const {
+     }
+     ALOGV("pipeline has room (total: %zu, input released: %zu)",
+           mFramesInPipeline.size(), sizeWithInputReleased);
++    if (pipelineRoom) {
++        *pipelineRoom = mInputDelay + mPipelineDelay + mOutputDelay + mSmoothnessFactor
++                                - mFramesInPipeline.size();
++    }
+     return false;
+ }
+ 
+diff --git a/media/codec2/sfplugin/PipelineWatcher.h b/media/codec2/sfplugin/PipelineWatcher.h
+index 1e23147..d976f9e 100644
+--- a/media/codec2/sfplugin/PipelineWatcher.h
++++ b/media/codec2/sfplugin/PipelineWatcher.h
+@@ -100,11 +100,13 @@ public:
+     void flush();
+ 
+     /**
++     * \param   pipelineRoom   additional work items that pipeline can take
++     *                         before getting full.
+      * \return  true  if pipeline does not need more work items to proceed
+      *                smoothly, considering delays and smoothness factor;
+      *          false otherwise.
+      */
+-    bool pipelineFull() const;
++    bool pipelineFull(size_t *pipelineRoom = nullptr) const;
+ 
+     /**
+      * Return elapsed processing time of a work item, nth from the longest
+-- 
+2.34.1
+

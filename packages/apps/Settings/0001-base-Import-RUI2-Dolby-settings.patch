@@ -1,0 +1,635 @@
+From e5e84d32829fc175eb210df3fd670d615bf4e960 Mon Sep 17 00:00:00 2001
+From: alibei <sebastiankotzias83@gmail.com>
+Date: Thu, 20 Jul 2023 17:01:09 +0200
+Subject: [PATCH] base: Import RUI2 Dolby settings
+
+Change-Id: I9ce3ab4756378d724c6c112fc881bf69fd25c9a2
+Signed-off-by: alibei <sebastiankotzias83@gmail.com>
+---
+ res/drawable/ic_dolby_logo.xml                |  23 +++
+ res/values/cm_strings.xml                     |  10 ++
+ res/xml/sound_dolby_settings.xml              |  15 ++
+ res/xml/sound_settings.xml                    |   8 +
+ .../applications/AppStateOverlayBridge.java   |   1 +
+ .../notification/SoundDolbyConstants.java     |  27 ++++
+ .../SoundDolbyParentPreferenceController.java | 106 ++++++++++++
+ .../SoundDolbyPreferenceController.java       | 151 ++++++++++++++++++
+ .../notification/SoundDolbySettings.java      |  59 +++++++
+ .../SoundDolbySwitchPreferenceController.java | 126 +++++++++++++++
+ 10 files changed, 526 insertions(+)
+ create mode 100644 res/drawable/ic_dolby_logo.xml
+ create mode 100644 res/xml/sound_dolby_settings.xml
+ create mode 100644 src/com/android/settings/notification/SoundDolbyConstants.java
+ create mode 100644 src/com/android/settings/notification/SoundDolbyParentPreferenceController.java
+ create mode 100644 src/com/android/settings/notification/SoundDolbyPreferenceController.java
+ create mode 100644 src/com/android/settings/notification/SoundDolbySettings.java
+ create mode 100644 src/com/android/settings/notification/SoundDolbySwitchPreferenceController.java
+
+diff --git a/res/drawable/ic_dolby_logo.xml b/res/drawable/ic_dolby_logo.xml
+new file mode 100644
+index 0000000..2286d24
+--- /dev/null
++++ b/res/drawable/ic_dolby_logo.xml
+@@ -0,0 +1,23 @@
++<?xml version="1.0" encoding="utf-8"?>
++<vector
++    xmlns:android="http://schemas.android.com/apk/res/android"
++    android:tint="?android:attr/colorControlNormal"
++    android:height="24dp"
++    android:width="24dp"
++    android:viewportWidth="24"
++    android:viewportHeight="24">
++
++    <path
++        android:fillColor="#ff000000"
++        android:fillType="nonZero"
++        android:strokeColor="#ff000000"
++        android:strokeWidth="1"
++        android:pathData="M22,18.7273L19.9289,18.7273C16.0616,18.7273 12.9091,15.8695 12.9091,12.3636C12.9091,8.8578 16.0616,6 19.9289,6L22,6L22,18.7273"/>
++
++    <path
++        android:fillColor="#ff000000"
++        android:fillType="nonZero"
++        android:strokeColor="#ff000000"
++        android:strokeWidth="1"
++        android:pathData="M2,6L4.0712,6C7.9384,6 11.0909,8.8578 11.0909,12.3636C11.0909,15.8695 7.9384,18.7273 4.0712,18.7273L2,18.7273L2,6"/>
++</vector>
+\ No newline at end of file
+diff --git a/res/values/cm_strings.xml b/res/values/cm_strings.xml
+index 9cda169..d5e0193 100644
+--- a/res/values/cm_strings.xml
++++ b/res/values/cm_strings.xml
+@@ -189,4 +189,14 @@
+ 
+     <!-- Location settings screen, setting summary for Assisted GPS switch -->
+     <string name="assisted_gps_summary">Download satellite assistance data from the internet which can greatly improve the GPS startup performance. For emergency calls, assisted GPS is always allowed.</string>
++
++    <!-- Dolby -->
++    <string name="dolby_apps_title">Dolby Sound Apps</string>
++    <string name="dolby_effect_title">Dolby Atmos</string>
++    <string name="dolby_mode_intelligence_title">Dynamic</string>
++    <string name="dolby_mode_intelligence_summary">Optimize sound automatically based on what you\'re listening to.</string>
++    <string name="dolby_mode_movie_title">Movie</string>
++    <string name="dolby_mode_movie_summary">Real 3D surround sound and clearer voices.</string>
++    <string name="dolby_mode_music_title">Music</string>
++    <string name="dolby_mode_music_summary">Fuller and more balanced sound.</string>
+ </resources>
+diff --git a/res/xml/sound_dolby_settings.xml b/res/xml/sound_dolby_settings.xml
+new file mode 100644
+index 0000000..842338e
+--- /dev/null
++++ b/res/xml/sound_dolby_settings.xml
+@@ -0,0 +1,15 @@
++<?xml version="1.0" encoding="utf-8"?>
++<PreferenceScreen
++    xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:app="http://schemas.android.com/apk/res-auto"
++    android:title="@string/dolby_effect_title"
++    android:key="sound_dolby_settings_screen">
++
++    <com.android.settingslib.widget.LayoutPreference
++        android:layout="@layout/styled_switch_bar"
++        android:key="sound_dolby_settings_switch"/>
++
++    <PreferenceCategory
++        android:key="sound_dolby_settings_category"/>
++
++</PreferenceScreen>
+diff --git a/res/xml/sound_settings.xml b/res/xml/sound_settings.xml
+index 34dbfd0..f45569d 100644
+--- a/res/xml/sound_settings.xml
++++ b/res/xml/sound_settings.xml
+@@ -30,6 +30,14 @@
+         settings:controller="com.android.settings.notification.RemoteVolumeGroupController">
+     </PreferenceCategory>
+ 
++    <Preference
++        android:icon="@drawable/ic_dolby_logo"
++        android:title="@string/dolby_apps_title"
++        android:key="dlb_dap_settings"
++        android:order="-184"
++        android:fragment="com.android.settings.notification.SoundDolbySettings"
++        settings:controller="com.android.settings.notification.SoundDolbyParentPreferenceController"/>
++
+     <!-- Media volume -->
+     <com.android.settings.notification.VolumeSeekBarPreference
+         android:key="media_volume"
+diff --git a/src/com/android/settings/applications/AppStateOverlayBridge.java b/src/com/android/settings/applications/AppStateOverlayBridge.java
+index 838ee42..a5e4b9e 100644
+--- a/src/com/android/settings/applications/AppStateOverlayBridge.java
++++ b/src/com/android/settings/applications/AppStateOverlayBridge.java
+@@ -71,6 +71,7 @@ public class AppStateOverlayBridge extends AppStateAppOpsBridge {
+ 
+         static {
+             DISABLE_PACKAGE_LIST.add("com.android.systemui");
++            DISABLE_PACKAGE_LIST.add("com.dolby.daxservice");
+         }
+ 
+         public OverlayState(PermissionState permissionState) {
+diff --git a/src/com/android/settings/notification/SoundDolbyConstants.java b/src/com/android/settings/notification/SoundDolbyConstants.java
+new file mode 100644
+index 0000000..d415dd5
+--- /dev/null
++++ b/src/com/android/settings/notification/SoundDolbyConstants.java
+@@ -0,0 +1,27 @@
++package com.android.settings.notification;
++
++import com.android.settings.R;
++
++public class SoundDolbyConstants {
++
++    public static final String DOLBY_DAP_STATE = "dlb_dap_state";
++    public static final String DOLBY_DAP_PROFILE = "dlb_dap_profile";
++
++    public static final String[] PROFILE_KEYS = {
++            "dlb_dap_profile_dynamic",
++            "dlb_dap_profile_movie",
++            "dlb_dap_profile_music"
++    };
++
++    public static final int[] PROFILE_STRING_IDS = {
++            R.string.dolby_mode_intelligence_title,
++            R.string.dolby_mode_movie_title,
++            R.string.dolby_mode_music_title
++    };
++
++    public static final int[] SUMMARY_STRING_IDS = {
++            R.string.dolby_mode_intelligence_summary,
++            R.string.dolby_mode_movie_summary,
++            R.string.dolby_mode_music_summary
++    };
++}
+\ No newline at end of file
+diff --git a/src/com/android/settings/notification/SoundDolbyParentPreferenceController.java b/src/com/android/settings/notification/SoundDolbyParentPreferenceController.java
+new file mode 100644
+index 0000000..7329273
+--- /dev/null
++++ b/src/com/android/settings/notification/SoundDolbyParentPreferenceController.java
+@@ -0,0 +1,106 @@
++package com.android.settings.notification;
++
++import static com.android.settings.notification.SoundDolbyConstants.DOLBY_DAP_PROFILE;
++import static com.android.settings.notification.SoundDolbyConstants.DOLBY_DAP_STATE;
++
++import android.content.ContentResolver;
++import android.content.Context;
++import android.database.ContentObserver;
++import android.net.Uri;
++import android.os.Handler;
++import android.provider.Settings;
++
++import androidx.preference.Preference;
++import androidx.preference.PreferenceScreen;
++
++import com.android.settings.R;
++import com.android.settings.core.BasePreferenceController;
++import com.android.settingslib.core.lifecycle.LifecycleObserver;
++import com.android.settingslib.core.lifecycle.events.OnPause;
++import com.android.settingslib.core.lifecycle.events.OnResume;
++
++public class SoundDolbyParentPreferenceController extends BasePreferenceController
++        implements LifecycleObserver, OnResume, OnPause {
++
++    private Preference mPreference;
++    private SettingObserver mSettingObserver;
++
++    public SoundDolbyParentPreferenceController(Context context, String preferenceKey) {
++        super(context, preferenceKey);
++    }
++
++    @Override
++    public int getAvailabilityStatus() {
++        return BasePreferenceController.AVAILABLE;
++    }
++
++    private CharSequence updateSummary() {
++        if (Settings.Global.getInt(mContext.getContentResolver(), DOLBY_DAP_STATE, 1) == 1) {
++            int profileIndex = Settings.Global.getInt(mContext.getContentResolver(), DOLBY_DAP_PROFILE, 0);
++            if (profileIndex >= 0 && profileIndex < SoundDolbyConstants.PROFILE_KEYS.length) {
++                return mContext.getText(SoundDolbyConstants.PROFILE_STRING_IDS[profileIndex]);
++            }
++        }
++        return mContext.getText(R.string.switch_off_text);
++    }
++
++    @Override
++    public void displayPreference(PreferenceScreen preferenceScreen) {
++        super.displayPreference(preferenceScreen);
++        mPreference = preferenceScreen.findPreference(getPreferenceKey());
++        if (mPreference != null) {
++            mSettingObserver = new SettingObserver(mPreference);
++        }
++    }
++
++    @Override
++    public void updateState(Preference preference) {
++        mPreference.setSummary(updateSummary());
++    }
++
++    @Override
++    public CharSequence getSummary() {
++        return updateSummary();
++    }
++
++    @Override
++    public void onResume() {
++        if (mSettingObserver != null) {
++            mSettingObserver.register(mContext.getContentResolver());
++        }
++    }
++
++    @Override
++    public void onPause() {
++        if (mSettingObserver != null) {
++            mSettingObserver.unregister(mContext.getContentResolver());
++        }
++    }
++
++    private class SettingObserver extends ContentObserver {
++        private final Uri SOUND_DOLBY_STATE;
++        private final Preference mPreference;
++
++        public SettingObserver(Preference preference) {
++            super(new Handler());
++            SOUND_DOLBY_STATE = Uri.parse("content://settings/global/" + DOLBY_DAP_STATE);
++            mPreference = preference;
++        }
++
++        public void register(ContentResolver contentResolver) {
++            contentResolver.registerContentObserver(SOUND_DOLBY_STATE, false, this);
++        }
++
++        public void unregister(ContentResolver contentResolver) {
++            contentResolver.unregisterContentObserver(this);
++        }
++
++        @Override
++        public void onChange(boolean selfChange, Uri uri) {
++            super.onChange(selfChange, uri);
++            if (uri == null || SOUND_DOLBY_STATE.equals(uri)) {
++                SoundDolbyParentPreferenceController.this.updateState(mPreference);
++            }
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/src/com/android/settings/notification/SoundDolbyPreferenceController.java b/src/com/android/settings/notification/SoundDolbyPreferenceController.java
+new file mode 100644
+index 0000000..a65b5a2
+--- /dev/null
++++ b/src/com/android/settings/notification/SoundDolbyPreferenceController.java
+@@ -0,0 +1,151 @@
++package com.android.settings.notification;
++
++import static com.android.settings.notification.SoundDolbyConstants.DOLBY_DAP_PROFILE;
++import static com.android.settings.notification.SoundDolbyConstants.DOLBY_DAP_STATE;
++
++import android.content.ContentResolver;
++import android.content.Context;
++import android.database.ContentObserver;
++import android.net.Uri;
++import android.os.Handler;
++import android.provider.Settings;
++
++import androidx.preference.Preference;
++import androidx.preference.PreferenceCategory;
++import androidx.preference.PreferenceScreen;
++
++import com.android.settingslib.core.AbstractPreferenceController;
++import com.android.settingslib.core.lifecycle.Lifecycle;
++import com.android.settingslib.core.lifecycle.LifecycleObserver;
++import com.android.settingslib.core.lifecycle.events.OnPause;
++import com.android.settingslib.core.lifecycle.events.OnResume;
++import com.android.settingslib.widget.RadioButtonPreference;
++
++import java.util.HashMap;
++import java.util.Map;
++
++public class SoundDolbyPreferenceController extends AbstractPreferenceController
++        implements RadioButtonPreference.OnClickListener, LifecycleObserver, OnResume, OnPause {
++
++    private final Context mContext;
++    private final Map<String, Integer> mDolbyProfileKeyToValueMap;
++    private PreferenceCategory mPreferenceCategory;
++    private RadioButtonPreference[] mRadioButtonPreferences;
++    private SettingObserver mSettingObserver;
++
++    public SoundDolbyPreferenceController(Context context, Lifecycle lifecycle) {
++        super(context);
++        mRadioButtonPreferences = new RadioButtonPreference[SoundDolbyConstants.PROFILE_KEYS.length];
++        mDolbyProfileKeyToValueMap = new HashMap<>();
++        mContext = context;
++        if (lifecycle != null) {
++            lifecycle.addObserver(this);
++        }
++    }
++
++    private Map<String, Integer> getProfileValueToKeyMap() {
++        if (mDolbyProfileKeyToValueMap.isEmpty()) {
++            for (int i = 0; i < SoundDolbyConstants.PROFILE_KEYS.length; i++) {
++                mDolbyProfileKeyToValueMap.put(SoundDolbyConstants.PROFILE_KEYS[i], i);
++            }
++        }
++        return mDolbyProfileKeyToValueMap;
++    }
++
++    @Override
++    public String getPreferenceKey() {
++        return "sound_dolby_settings_category";
++    }
++
++    @Override
++    public boolean isAvailable() {
++        return true;
++    }
++
++    @Override
++    public void displayPreference(PreferenceScreen preferenceScreen) {
++        super.displayPreference(preferenceScreen);
++        mPreferenceCategory = preferenceScreen.findPreference(getPreferenceKey());
++        for (int i = 0; i < SoundDolbyConstants.PROFILE_KEYS.length; i++) {
++            mRadioButtonPreferences[i] = createRadioButtonPreference(
++                    SoundDolbyConstants.PROFILE_KEYS[i],
++                    SoundDolbyConstants.PROFILE_STRING_IDS[i],
++                    SoundDolbyConstants.SUMMARY_STRING_IDS[i]);
++        }
++        if (mPreferenceCategory != null) {
++            mSettingObserver = new SettingObserver(mPreferenceCategory);
++        }
++    }
++
++    @Override
++    public void onRadioButtonClicked(RadioButtonPreference radioButtonPreference) {
++        int profileValue = getProfileValueToKeyMap().get(radioButtonPreference.getKey());
++        if (profileValue != Settings.Global.getInt(mContext.getContentResolver(), DOLBY_DAP_PROFILE, 0)) {
++            Settings.Global.putInt(mContext.getContentResolver(), DOLBY_DAP_PROFILE, profileValue);
++        }
++    }
++
++    @Override
++    public void updateState(Preference preference) {
++        int dapProfile = Settings.Global.getInt(mContext.getContentResolver(), DOLBY_DAP_PROFILE, 0);
++        boolean dapState = Settings.Global.getInt(mContext.getContentResolver(), DOLBY_DAP_STATE, 1) == 1;
++        for (int i = 0; i < SoundDolbyConstants.PROFILE_KEYS.length; i++) {
++            mRadioButtonPreferences[i].setEnabled(dapState);
++            mRadioButtonPreferences[i].setChecked(i == dapProfile);
++        }
++    }
++
++    @Override
++    public void onResume() {
++        if (mSettingObserver != null) {
++            mSettingObserver.register(mContext.getContentResolver());
++        }
++    }
++
++    @Override
++    public void onPause() {
++        if (mSettingObserver != null) {
++            mSettingObserver.unregister(mContext.getContentResolver());
++        }
++    }
++
++    private RadioButtonPreference createRadioButtonPreference(String key, int titleId, int summaryId) {
++        RadioButtonPreference radioButtonPreference = new RadioButtonPreference(mPreferenceCategory.getContext());
++        radioButtonPreference.setKey(key);
++        radioButtonPreference.setTitle(titleId);
++        radioButtonPreference.setOnClickListener(this);
++        radioButtonPreference.setSummary(summaryId);
++        mPreferenceCategory.addPreference(radioButtonPreference);
++        return radioButtonPreference;
++    }
++
++    private class SettingObserver extends ContentObserver {
++        private final Uri SOUND_DOLBY_PROFILE;
++        private final Uri SOUND_DOLBY_STATE;
++        private final Preference mPreference;
++
++        public SettingObserver(Preference preference) {
++            super(new Handler());
++            SOUND_DOLBY_PROFILE = Uri.parse("content://settings/global/" + DOLBY_DAP_PROFILE);
++            SOUND_DOLBY_STATE = Uri.parse("content://settings/global/" + DOLBY_DAP_STATE);
++            mPreference = preference;
++        }
++
++        public void register(ContentResolver contentResolver) {
++            contentResolver.registerContentObserver(SOUND_DOLBY_PROFILE, false, this);
++            contentResolver.registerContentObserver(SOUND_DOLBY_STATE, false, this);
++        }
++
++        public void unregister(ContentResolver contentResolver) {
++            contentResolver.unregisterContentObserver(this);
++        }
++
++        @Override
++        public void onChange(boolean selfChange, Uri uri) {
++            super.onChange(selfChange, uri);
++            if (uri == null || SOUND_DOLBY_PROFILE.equals(uri) || SOUND_DOLBY_STATE.equals(uri)) {
++                SoundDolbyPreferenceController.this.updateState(mPreference);
++            }
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/src/com/android/settings/notification/SoundDolbySettings.java b/src/com/android/settings/notification/SoundDolbySettings.java
+new file mode 100644
+index 0000000..595bc0c
+--- /dev/null
++++ b/src/com/android/settings/notification/SoundDolbySettings.java
+@@ -0,0 +1,59 @@
++package com.android.settings.notification;
++
++import android.app.settings.SettingsEnums;
++import android.content.Context;
++import android.provider.SearchIndexableResource;
++
++import com.android.settings.R;
++import com.android.settings.dashboard.DashboardFragment;
++import com.android.settings.search.BaseSearchIndexProvider;
++import com.android.settingslib.core.AbstractPreferenceController;
++import com.android.settingslib.core.lifecycle.Lifecycle;
++
++import java.util.ArrayList;
++import java.util.Arrays;
++import java.util.List;
++
++public class SoundDolbySettings extends DashboardFragment {
++
++    public final BaseSearchIndexProvider SEARCH_INDEX_DATA_PROVIDER = new BaseSearchIndexProvider() {
++        @Override
++        public List<SearchIndexableResource> getXmlResourcesToIndex(Context context, boolean enabled) {
++            SearchIndexableResource searchIndexableResource = new SearchIndexableResource(context);
++            searchIndexableResource.xmlResId = R.xml.sound_dolby_settings;
++            return Arrays.asList(searchIndexableResource);
++        }
++
++        @Override
++        public List<AbstractPreferenceController> createPreferenceControllers(Context context) {
++            return buildPreferenceControllers(context, null);
++        }
++    };
++
++    @Override
++    protected String getLogTag() {
++        return "SoundDolbySettings";
++    }
++
++    @Override
++    public int getMetricsCategory() {
++        return SettingsEnums.NOTIFICATION_APP_NOTIFICATION;
++    }
++
++    @Override
++    protected List<AbstractPreferenceController> createPreferenceControllers(Context context) {
++        return buildPreferenceControllers(context, getSettingsLifecycle());
++    }
++
++    private static List<AbstractPreferenceController> buildPreferenceControllers(Context context, Lifecycle lifecycle) {
++        ArrayList<AbstractPreferenceController> preferenceControllers = new ArrayList<>();
++        preferenceControllers.add(new SoundDolbyPreferenceController(context, lifecycle));
++        preferenceControllers.add(new SoundDolbySwitchPreferenceController(context, lifecycle));
++        return preferenceControllers;
++    }
++
++    @Override
++    protected int getPreferenceScreenResId() {
++        return R.xml.sound_dolby_settings;
++    }
++}
+\ No newline at end of file
+diff --git a/src/com/android/settings/notification/SoundDolbySwitchPreferenceController.java b/src/com/android/settings/notification/SoundDolbySwitchPreferenceController.java
+new file mode 100644
+index 0000000..45e707f
+--- /dev/null
++++ b/src/com/android/settings/notification/SoundDolbySwitchPreferenceController.java
+@@ -0,0 +1,126 @@
++package com.android.settings.notification;
++
++import static com.android.settings.notification.SoundDolbyConstants.DOLBY_DAP_STATE;
++
++import android.content.ContentResolver;
++import android.content.Context;
++import android.database.ContentObserver;
++import android.net.Uri;
++import android.os.Handler;
++import android.provider.Settings;
++import android.widget.Switch;
++
++import androidx.preference.Preference;
++import androidx.preference.PreferenceScreen;
++
++import com.android.settings.R;
++import com.android.settings.widget.SwitchBar;
++import com.android.settingslib.core.AbstractPreferenceController;
++import com.android.settingslib.core.lifecycle.Lifecycle;
++import com.android.settingslib.core.lifecycle.LifecycleObserver;
++import com.android.settingslib.core.lifecycle.events.OnPause;
++import com.android.settingslib.core.lifecycle.events.OnResume;
++import com.android.settingslib.widget.LayoutPreference;
++
++public class SoundDolbySwitchPreferenceController extends AbstractPreferenceController
++        implements SwitchBar.OnSwitchChangeListener, LifecycleObserver, OnResume, OnPause {
++
++    private final Context mContext;
++    private SettingObserver mSettingObserver;
++    private SwitchBar mSwitch;
++
++    public SoundDolbySwitchPreferenceController(Context context, Lifecycle lifecycle) {
++        super(context);
++        mContext = context;
++        if (lifecycle != null) {
++            lifecycle.addObserver(this);
++        }
++    }
++
++    @Override
++    public String getPreferenceKey() {
++        return "sound_dolby_settings_switch";
++    }
++
++    @Override
++    public boolean isAvailable() {
++        return true;
++    }
++
++    @Override
++    public void displayPreference(PreferenceScreen preferenceScreen) {
++        LayoutPreference layoutPreference;
++        super.displayPreference(preferenceScreen);
++        if (!isAvailable() || (layoutPreference = (LayoutPreference) preferenceScreen.findPreference(getPreferenceKey())) == null) {
++            return;
++        }
++        mSettingObserver = new SettingObserver(layoutPreference);
++        mSwitch = layoutPreference.findViewById(R.id.switch_bar);
++        if (mSwitch != null) {
++            mSwitch.addOnSwitchChangeListener(this);
++            mSwitch.show();
++        }
++    }
++
++    protected void setChecked(boolean checked) {
++        SwitchBar switchBar = mSwitch;
++        if (switchBar != null) {
++            switchBar.setChecked(checked);
++        }
++    }
++
++    @Override
++    public void updateState(Preference preference) {
++        setChecked(Settings.Global.getInt(mContext.getContentResolver(), DOLBY_DAP_STATE, 1) == 1);
++    }
++
++    @Override
++    public void onSwitchChanged(Switch switchView, boolean isChecked) {
++        if ((Settings.Global.getInt(mContext.getContentResolver(), DOLBY_DAP_STATE, 1) == 1) != isChecked) {
++            Settings.Global.putInt(mContext.getContentResolver(), DOLBY_DAP_STATE, isChecked ? 1 : 0);
++        }
++    }
++
++    @Override
++    public void onResume() {
++        SettingObserver settingObserver = mSettingObserver;
++        if (settingObserver != null) {
++            settingObserver.register(mContext.getContentResolver());
++        }
++    }
++
++    @Override
++    public void onPause() {
++        SettingObserver settingObserver = mSettingObserver;
++        if (settingObserver != null) {
++            settingObserver.unregister(mContext.getContentResolver());
++        }
++    }
++
++    private class SettingObserver extends ContentObserver {
++        private final Uri SOUND_DOLBY_STATE;
++        private final Preference mPreference;
++
++        public SettingObserver(Preference preference) {
++            super(new Handler());
++            SOUND_DOLBY_STATE = Uri.parse("content://settings/global/" + DOLBY_DAP_STATE);
++            mPreference = preference;
++        }
++
++        public void register(ContentResolver contentResolver) {
++            contentResolver.registerContentObserver(SOUND_DOLBY_STATE, false, this);
++        }
++
++        public void unregister(ContentResolver contentResolver) {
++            contentResolver.unregisterContentObserver(this);
++        }
++
++        @Override
++        public void onChange(boolean selfChange, Uri uri) {
++            super.onChange(selfChange, uri);
++            if (uri == null || SOUND_DOLBY_STATE.equals(uri)) {
++                updateState(mPreference);
++            }
++        }
++    }
++}
+\ No newline at end of file
+-- 
+2.34.1
+

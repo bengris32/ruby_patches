@@ -1,0 +1,31 @@
+From 87c138ce1f8c34218cbab3ad16447c6c5f69c179 Mon Sep 17 00:00:00 2001
+From: Shrikara B <quic_shrikara@quicinc.com>
+Date: Fri, 25 Mar 2022 17:43:23 +0530
+Subject: [PATCH 8/9] codec2: Change a Info print into Verbose
+
+To reduce the power consumption, a info log is changed into
+verbose since this log gets printed too many times in some
+cases.
+
+CRs-Fixed: 3177867
+Change-Id: Iebd83fe33bd564021664b918688e5f4b49694ecb
+---
+ media/codec2/sfplugin/CCodecBufferChannel.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/media/codec2/sfplugin/CCodecBufferChannel.cpp b/media/codec2/sfplugin/CCodecBufferChannel.cpp
+index 882e8a2..8096454 100644
+--- a/media/codec2/sfplugin/CCodecBufferChannel.cpp
++++ b/media/codec2/sfplugin/CCodecBufferChannel.cpp
+@@ -775,7 +775,7 @@ void CCodecBufferChannel::feedInputBufferIfAvailableInternal() {
+                 pipelineRoom = SIZE_MAX;
+             }
+             if (pipelineRoom <= input->buffers->numClientBuffers()) {
+-                ALOGI("pipelineRoom(%zu) is <= numClientBuffers(%zu). "
++                ALOGV("pipelineRoom(%zu) is <= numClientBuffers(%zu). "
+                     "Not signalling any more buffers to client",
+                     pipelineRoom, input->buffers->numClientBuffers());
+                 break;
+-- 
+2.34.1
+
